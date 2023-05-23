@@ -1,0 +1,5 @@
+domq/gdb
+ethereum/ethereum
+homebrew/cask
+homebrew/core
+lencx/chatgpt

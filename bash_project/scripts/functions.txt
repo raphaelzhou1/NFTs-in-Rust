@@ -1,0 +1,18 @@
+CW721_QUERY_WITH_ADDRESS='{
+    "tokens": {
+      "owner": "'$ACCOUNT_ADDRESS'"
+    }
+}'
+CW721_QUERY_WITH_ADDRESS='{
+    "tokens": {
+      "owner": "'$PEYTON_ADDRESS'"
+    }
+}'
+
+CW721_QUERY_WITH_TOKEN_ID='{
+  "all_nft_info": {
+    "token_id": "NFT_3"
+  }
+}'
+
+$SEID q wasm contract-state smart $CW721_BASE_ADDRESS "$CW721_QUERY_WITH_TOKEN_ID" --output json --chain-id $CHAIN_ID --node=$RPC
