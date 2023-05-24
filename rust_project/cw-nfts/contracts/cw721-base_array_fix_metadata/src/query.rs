@@ -18,6 +18,17 @@ use crate::state::{Approval, Cw721Contract, TokenInfo};
 
 const DEFAULT_LIMIT: u32 = 10;
 const MAX_LIMIT: u32 = 100;
+pub struct Metadata {
+    pub image: Option<String>,
+    pub image_data: Option<String>,
+    pub external_url: Option<String>,
+    pub description: Option<String>,
+    pub name: Option<String>,
+    pub attributes: Option<Vec<Trait>>,
+    pub background_color: Option<String>,
+    pub animation_url: Option<String>,
+    pub youtube_url: Option<String>,
+}
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
 pub struct Extension {
@@ -67,37 +78,20 @@ where
     fn nft_info(&self, deps: Deps, token_id: String) -> Result<cw721::NftInfoResponse<T>, cosmwasm_std::StdError> {
         let info = self.tokens.load(deps.storage, &token_id)?;
 
-        let extension_json = r#"
-        {
-            "animation_url": null,
-            "attributes": [
-                {
-                    "trait_type": "color",
-                    "value": "yellow"
-                },
-                {
-                    "trait_type": "ship name",
-                    "value": "HMS_ENCORE"
-                },
-                {
-                    "trait_type": "background color",
-                    "value": "gray"
-                }
-            ],
-            "description": "Sparrowswap OG April 2023",
-            "external_url": "https://gateway.pinata.cloud/ipfs/QmeeBZKNLjdXX1npae8tPu7xdTSxYUY4rhuE7HzP9PkcoC",
-            "image": "https://gateway.pinata.cloud/ipfs/QmeeBZKNLjdXX1npae8tPu7xdTSxYUY4rhuE7HzP9PkcoC",
-            "name": "Sparrowswap OG April 2023",
-            "youtube_url": null
-        }
-        "#;
+        // let extension = Some(Metadata {
+        //     animation_url: None,
+        //     attributes:
+        //     description: Some("Spaceship with Warp Drive".into()),
+        //     name: Some("Starship USS Enterprise".to_string()),
+        //
+        // });
 
-        let extension: T = serde_json::from_str(extension_json).unwrap();
+        // let extension: T = serde_json::from_str(extension_json).unwrap();
 
 
         Ok(cw721::NftInfoResponse {
             token_uri: info.token_uri,
-            extension: extension,
+            extension: info.extension,
         })
     }
 

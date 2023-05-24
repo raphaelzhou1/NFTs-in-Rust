@@ -1,54 +1,3 @@
-export CW721_BASE_CODE_ID=
-export CW721_BASE_CODE_ID=300
-export CW721_BASE_CODE_ID=354
-export CW721_BASE_INIT='{
-        "minter": "sei13e58xcttwm7n5tpnmpcrqm5yjpjm5j28c6wf09",
-        "name": "Sparrowswap OG April 2023",
-        "symbol": "SparrowswapOGApril2023"
-    }'
-export CW721_BASE_CODE_ID=357
-export CW721_BASE_INIT='{
-        "minter": "sei13e58xcttwm7n5tpnmpcrqm5yjpjm5j28c6wf09",
-        "name": "Sparrowswap OG April 2023",
-        "symbol": "SparrowswapOGApril2023"
-    }'
-export CW721_BASE_CODE_ID=363
-export CW721_BASE_INIT='{
-        "minter": "sei13e58xcttwm7n5tpnmpcrqm5yjpjm5j28c6wf09",
-        "name": "Sparrowswap OG April 2023",
-        "symbol": "SparrowswapOGApril2023"
-    }'
-export CW721_BASE_CODE_ID=363
-export CW721_BASE_INIT='{
-        "minter": "sei13e58xcttwm7n5tpnmpcrqm5yjpjm5j28c6wf09",
-        "name": "Sparrowswap OG April 2023",
-        "symbol": "SparrowswapOGApril2023"
-    }'
-export CW721_BASE_CODE_ID=363
-export CW721_BASE_INIT='{
-        "minter": "sei13e58xcttwm7n5tpnmpcrqm5yjpjm5j28c6wf09",
-        "name": "Sparrowswap OG April 2023",
-        "symbol": "SparrowswapOGApril2023"
-    }'
-export CW721_BASE_CODE_ID=363
-export CW721_BASE_INIT='{
-        "minter": "sei13e58xcttwm7n5tpnmpcrqm5yjpjm5j28c6wf09",
-        "name": "Sparrowswap OG April 2023",
-        "symbol": "SparrowswapOGApril2023"
-    }'
-export CW721_BASE_CODE_ID=364
-export CW721_BASE_INIT='{
-        "minter": "sei13e58xcttwm7n5tpnmpcrqm5yjpjm5j28c6wf09",
-        "name": "Sparrowswap OG April 2023",
-        "symbol": "SparrowswapOGApril2023"
-    }'
-export CW721_BASE_CODE_ID=364
-export CW721_BASE_INIT='{
-        "minter": "sei13e58xcttwm7n5tpnmpcrqm5yjpjm5j28c6wf09",
-        "name": "Sparrowswap OG April 2023",
-        "symbol": "SparrowswapOGApril2023"
-    }'
-export CW721_BASE_CODE_ID=365
 export CW721_BASE_INIT='{
         "minter": "sei13e58xcttwm7n5tpnmpcrqm5yjpjm5j28c6wf09",
         "name": "Sparrowswap OG April 2023",
@@ -59,16 +8,28 @@ export CW721_BASE_INIT='{
         "name": "Sparrowswap OG April 2023",
         "symbol": "SparrowswapOGApril2023"
     }'
-export CW721_BASE_CODE_ID=366
 export CW721_BASE_INIT='{
         "minter": "sei13e58xcttwm7n5tpnmpcrqm5yjpjm5j28c6wf09",
         "name": "Sparrowswap OG April 2023",
         "symbol": "SparrowswapOGApril2023"
     }'
-export CW721_BASE_CODE_ID=367
 export CW721_BASE_INIT='{
         "minter": "sei13e58xcttwm7n5tpnmpcrqm5yjpjm5j28c6wf09",
         "name": "Sparrowswap OG April 2023",
         "symbol": "SparrowswapOGApril2023"
     }'
-export CW721_BASE_CODE_ID=368
+export CW721_BASE_INIT='{
+        "minter": "sei13e58xcttwm7n5tpnmpcrqm5yjpjm5j28c6wf09",
+        "name": "Sparrowswap OG April 2023",
+        "symbol": "SparrowswapOGApril2023"
+    }'
+export CW721_BASE_INIT='{
+        "minter": "sei13e58xcttwm7n5tpnmpcrqm5yjpjm5j28c6wf09",
+        "name": "Sparrowswap OG April 2023",
+        "symbol": "SparrowswapOGApril2023"
+    }'
+export CW721_BASE_INIT='{
+        "minter": "sei13e58xcttwm7n5tpnmpcrqm5yjpjm5j28c6wf09",
+        "name": "Sparrowswap OG April 2023",
+        "symbol": "SparrowswapOGApril2023"
+    }'

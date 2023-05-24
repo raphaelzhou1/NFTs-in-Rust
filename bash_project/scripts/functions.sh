@@ -252,13 +252,15 @@ deploy_cw721_contract() {
     FUNCTION_NAME="deploy_cw721_base"
     echo "Choose .wasm file to load CW721 contract"
     CW721_path=$(zenity --file-selection --title="Select a WASM file" --file-filter="*.wasm" --filename="${workspace_root}/" --separator=",")
-    $SEID tx wasm store $CW721_path -y --chain-id $CHAIN_ID --from $ACCOUNT_ADDRESS --broadcast-mode=block --gas 16000000 --fees=1600000usei --node=$RPC
-    export CW721_BASE_CODE_ID=$($SEID q wasm list-code --output json --chain-id $CHAIN_ID --node=$RPC --limit 600 | jq -r '.code_infos[-1].code_id') # Store code_id for cw20_base.wasm
-    echo 'export CW721_BASE_CODE_ID='$CW721_BASE_CODE_ID >> ${workspace_root}/testnet_deploy_atlantic-2_log.txt
+    $SEID tx wasm store $CW721_path -y --chain-id $CHAIN_ID --from $ACCOUNT_ADDRESS --broadcast-mode=block --gas 5097656 --fees=509765usei --node=$RPC
+    export CW721_BASE_CODE_ID=$($SEID q wasm list-code --output json --chain-id $CHAIN_ID --node=$RPC --limit 900 | jq -r '.code_infos[-1].code_id') # Store code_id for cw20_base.wasm
+    echo "You got CW721 code id " $CW721_BASE_CODE_ID
+#    echo 'export CW721_BASE_CODE_ID='$CW721_BASE_CODE_ID >> ${workspace_root}/testnet_deploy_atlantic-2_log.txt
 
     yes | $SEID tx wasm instantiate $CW721_BASE_CODE_ID "$CW721_BASE_INIT" --chain-id $CHAIN_ID --from $ACCOUNT_ADDRESS --broadcast-mode=block --admin $ACCOUNT_ADDRESS --label $CW721 --gas 170000 --fees=17000usei --node=$RPC
     export CW721_BASE_ADDRESS=$($SEID q wasm list-contract-by-code $CW721_BASE_CODE_ID --output json --chain-id $CHAIN_ID --node=$RPC | jq -r '.contracts[-1]')
     echo "You got CW721 address " $CW721_BASE_ADDRESS
+#    echo "You got CW721 address " $CW721_BASE_ADDRESS
 }
 
 #deploy_cw721_base() {
@@ -1017,8 +1019,8 @@ mint_nft_for_addresses_in_json_using_cw721_base_array_from_metadata_jsons() {
                      "token_ids": $token_id
                    }
                  }')
-    GAS=$(( 10000 + 30000 * $iterate_step_size ))
-    FEES=$(( 1000 + 3000 * $iterate_step_size ))
+    GAS=$(( 40000 + 300000 * $iterate_step_size ))
+    FEES=$(( 4000 + 30000 * $iterate_step_size ))
 
     # Execute mint!
     sleep_time=10
@@ -1058,7 +1060,7 @@ query_nft_info() {
   for TOKEN_ID in "${TOKEN_IDs_In_ARRAY[@]}"; do
     # Construct the CW721_QUERY_WITH_TOKEN_ID variable
     CW721_QUERY_WITH_TOKEN_ID='{
-      "all_nft_info": {
+      "nft_info": {
         "token_id": "'$TOKEN_ID'"
       }
     }'
@@ -1231,6 +1233,7 @@ query_nft_info_from_json() {
         }
       }'
     TOKEN_IDs_IN_JSON=$($SEID q wasm contract-state smart $CW721_BASE_ADDRESS "$CW721_QUERY_WITH_ADDRESS" --output json --chain-id $CHAIN_ID --node=$RPC | jq -r '.data.tokens')
+#    echo TOKEN_IDs_IN_JSON
 
     ARRAY_LENGTH=$(echo "$TOKEN_IDs_IN_JSON" | jq '. | length')
     TOKEN_IDs_In_ARRAY=()

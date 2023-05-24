@@ -489,7 +489,7 @@ dependencies = [
  "cosmwasm-std",
  "cw2 1.0.1 (git+https://github.com/mars-protocol/cw-plus?rev=1a3a944)",
  "cw721 0.17.0",
- "cw721-base 0.17.0",
+ "cw721-base_array",
  "schemars",
  "serde",
 ]

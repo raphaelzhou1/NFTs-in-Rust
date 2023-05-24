@@ -25,8 +25,18 @@ pub use cw_ownable::{Action, Ownership, OwnershipError};
 
 use cosmwasm_std::Empty;
 
-// This is a simple type to let us handle empty extensions
-pub type Extension = Option<Empty>;
+pub struct Metadata {
+    pub image: Option<String>,
+    pub image_data: Option<String>,
+    pub external_url: Option<String>,
+    pub description: Option<String>,
+    pub name: Option<String>,
+    pub attributes: Option<Vec<Trait>>,
+    pub background_color: Option<String>,
+    pub animation_url: Option<String>,
+    pub youtube_url: Option<String>,
+}
+pub type Extension = Option<Metadata>;
 
 // Version info for migration
 pub const CONTRACT_NAME: &str = "crates.io:cw721-base";
