@@ -236,6 +236,25 @@ deploy_cw1_whitelist() {
   echo "$CW721_BASE_ADDRESS,$CW721_BASE_CODE_ID,$Description" >> "$CW1_PATH"
 }
 
+csv_to_json() {
+  file=$(zenity --file-selection --title="Select a CSV File")
+  columns=$(head -n 1 "$file" | tr ',' ' ')
+  echo "$columns"
+  echo "Select a column to output to JSON"
+  IFS=', ' read -r array <<< "$(head -n 1 "$file")" # Read first line of CSV file into "array" variable
+  echo "${array[@]}"
+  column=$(zenity --list --column=Columns "${array[@]}")
+  col_num=$(echo "$columns" | grep -n "^$column$" | cut -d: -f1)
+
+  # Read and parse CSV data and output to a JSON file
+  awk -F ',' -v col_num="$col_num" 'NR>1 {print $col_num}' "$file" |
+  jq -R . |
+  echo "Where to output JSON"
+  ADDRESS_JSON_FOLDER=$(zenity --file-selection --title="Select a Folder" --directory)
+  jq -s . > ${ADDRESS_JSON_FOLDER}/output.json
+
+}
+
 deploy_cw721_contract() {
     echo 'Enter CW721 contract name: '
     read CW721
@@ -1019,8 +1038,8 @@ mint_nft_for_addresses_in_json_using_cw721_base_array_from_metadata_jsons() {
                      "token_ids": $token_id
                    }
                  }')
-    GAS=$(( 40000 + 300000 * $iterate_step_size ))
-    FEES=$(( 4000 + 30000 * $iterate_step_size ))
+    GAS=$(( 40000 + 50000 * $iterate_step_size ))
+    FEES=$(( 4000 + 5000 * $iterate_step_size ))
 
     # Execute mint!
     sleep_time=10
@@ -1030,6 +1049,19 @@ mint_nft_for_addresses_in_json_using_cw721_base_array_from_metadata_jsons() {
     echo "End of output"
 
   done # reads the next line of JSON
+}
+
+query_cw20_users() {
+  echo "Enter CW20 Address to query: "
+  read CW20_BASE_ADDRESS
+  CW20_QUERY_MSG='{
+    "all_accounts": {
+      "start_after": null,
+      "limit": null
+    }
+  }'
+  TOKEN_IDs_IN_JSON=$($SEID q wasm contract-state smart $CW20_BASE_ADDRESS "$CW20_QUERY_MSG" --output json --chain-id $CHAIN_ID --node=$RPC | jq -r '.data.tokens')
+  echo $TOKEN_IDs_IN_JSON
 }
 
 query_nft_info() {
@@ -1246,7 +1278,7 @@ query_nft_info_from_json() {
   done
 }
 
-check_for_tokens() {
+query_for_user_tokens() {
   local address=$1
   local token_id_max=$2
   local cw721_base_address=$3
@@ -1273,4 +1305,46 @@ check_for_tokens() {
     fi
   done
   return $number_found
+}
+
+query_for_cw20_current_accounts() {
+  echo "Enter CW20 contract address to query user balances on: "
+    read cw20_address
+
+  echo "Do you want to read in a file? [y/n]"
+    read answer
+    if [ "$answer" != "${answer#[Yy]}" ]; then
+      ADDRESS_CSV_FILE=$(zenity --file-selection --title="Select a CSV file" --file-filter="*.csv" --filename="${workspace_root}/"  --separator=",")
+      total_rows=$(wc -l < "$ADDRESS_CSV_FILE")
+        echo "Total rows: $total_rows"
+      address=$(tail -n 1 $ADDRESS_CSV_FILE)
+      echo "Reading from file: $ADDRESS_CSV_FILE"
+      echo "Last address in file: $address"
+    else
+      address="sei0"
+      ADDRESS_CSV_FOLDER=$(zenity --file-selection --title="Select a Folder" --directory)
+    fi
+
+
+  while true; do
+      output=$($SEID q wasm contract-state smart $cw20_address "{\"all_accounts\": {\"start_after\": \"${address}\", \"limit\": 1000}}" --output json --chain-id atlantic-2 --node=https://sei.kingnodes.com)
+      accounts=$(echo "${output}" | jq -r '.data.accounts[]')
+      echo $output
+      echo "accounts: $accounts"
+
+      if [ "$answer" != "${answer#[Yy]}" ]; then
+        for account in $accounts; do
+          echo "${account}" >> ${ADDRESS_CSV_FILE}
+          done
+      else
+        for account in $accounts; do
+          echo "${account}" >> ${ADDRESS_CSV_FOLDER}/${cw20_address}_addresses.csv
+          done
+      fi
+      # Get the last account for the next loop
+       last_account=$(echo "${accounts}" | tail -n 1)
+       if [ ! -z "$last_account" ]; then
+           address=$last_account
+       fi
+  done
 }
