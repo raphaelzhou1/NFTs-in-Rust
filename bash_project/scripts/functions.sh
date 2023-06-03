@@ -1348,3 +1348,41 @@ query_for_cw20_current_accounts() {
        fi
   done
 }
+
+query_seid_bank_account_for_csv_addresses() {
+  file_path=$(zenity_file_path)
+  counter=0
+
+  # Convert JSON array to bash array
+  addresses=$(cat $file_path)
+#  echo "Addresses: $addresses"
+  element=$(echo $addresses | jq -r '.[919]')
+  echo "Element: $element"
+  total_rows=$(echo $addresses | jq -r '. | length')
+  echo "Total rows: $total_rows"
+
+  # Loop over each address in the array
+  for (( i=0; i< $total_rows; i++ ))
+  do
+    # Run the seid command and save its output
+    address=$(echo $addresses | jq -r ".[$i]")
+    echo "Querying address: $address"
+    echo "Command: $SEID q bank balances $address --output=json --node=https://rpc-sei-testnet.rhinostake.com/"
+    output=$($SEID q bank balances $address --output=json --node=https://rpc-sei-testnet.rhinostake.com/)
+    echo $output
+
+    # Parse the balances field from the output
+    balances=$(echo "$output" | jq -r '.balances')
+
+    # If balances is empty, increment the counter
+    if [[ -z "$balances" || "$balances" == "[]" ]]; then
+        ((counter++))
+    fi
+    echo "Counter: $counter"
+
+  done
+}
+
+zenity_file_path() {
+  echo $(zenity --file-selection --title="Select a file" --file-filter="*.csv *.json" --filename="${workspace_root}/" --separator=",")
+}

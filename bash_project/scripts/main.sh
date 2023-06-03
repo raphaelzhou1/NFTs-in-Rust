@@ -29,6 +29,7 @@ for function in $my_functions; do
     my_functions_in_array+=($function $function_index)
     ((function_index++))
 done
+
 while true; do
   selected_function=$(dialog --clear --title "Function Menu" --menu "Choose a function:" 10 80 4 "${my_functions_in_array[@]}" 3>&1 1>&2 2>&3 3>&-)
   selected_function=$(echo "$selected_function" | tr -d '\n')
