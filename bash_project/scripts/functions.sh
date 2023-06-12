@@ -957,9 +957,11 @@ mint_nft_for_addresses_in_json_using_cw721_base_array_from_metadata_jsons() {
       read answer
       if [[ $answer = y ]] || [[ $answer = yes ]]; then
           echo "Enter the index of address and of token id from the files where minting starts from: "
-          read starting_address_and_token_id
+          read starting_address
+          echo "Enter token ID to mint from: "
+          read token_id
       else
-          starting_address_and_token_id=$(tail -n 1 "$CACHE_FILE_FOR_ADDRESS_CSV_COPY_ROW_COUNTER") # reads last row
+          starting_address=$(tail -n 1 "$CACHE_FILE_FOR_ADDRESS_CSV_COPY_ROW_COUNTER") # reads last row
       fi
   echo "Reading CACHE files at" $CACHE_DIR ", starting from row " $START_ROW " and from token_id" $START_TOKEN_ID
 
@@ -973,40 +975,27 @@ mint_nft_for_addresses_in_json_using_cw721_base_array_from_metadata_jsons() {
             echo "Default step size: 1000"
         fi
 
-  echo "Choose folder for metadata JSON: "
-  folder_path=$(zenity --file-selection --directory --title="Choose a directory")
-  json_files=($(ls "$folder_path"/*.json))
-  num_files=${#json_files[@]}
-  random_index=$((RANDOM % num_files))
-  random_file=${json_files[$random_index]}
-  metadata=$(jq '.' "$random_file")
+#  echo "Choose folder for metadata JSON: "
+#  folder_path=$(zenity --file-selection --directory --title="Choose a directory")
+#  json_files=($(ls "$folder_path"/*.json))
+#  num_files=${#json_files[@]}
+#  random_index=$((RANDOM % num_files))
+#  random_file=${json_files[$random_index]}
+#  metadata=$(jq '.' "$random_file")
   metadata='{
     "animation_url": null,
-    "attributes": [
-      {
-        "trait_type": "color",
-        "value": "yellow"
-      },
-      {
-        "trait_type": "ship name",
-        "value": "HMS_ENCORE"
-      },
-      {
-        "trait_type": "background color",
-        "value": "gray"
-      }
-    ],
-    "description": "Sparrowswap OG April 2023",
-    "external_url": "https://gateway.pinata.cloud/ipfs/QmeeBZKNLjdXX1npae8tPu7xdTSxYUY4rhuE7HzP9PkcoC",
-    "image": "https://gateway.pinata.cloud/ipfs/QmeeBZKNLjdXX1npae8tPu7xdTSxYUY4rhuE7HzP9PkcoC",
-    "name": "Sparrowswap OG April 2023",
+    "attributes": [],
+    "description": "Sparrowswap OG May 2023",
+    "external_url": "https://sparrowswap.xyz/gallery",
+    "image": "https://gateway.pinata.cloud/ipfs/QmeT2QYjqUJYVBX5EuNA9u1rdDE1kXu2x2ADKeFgnVdxg5",
+    "name": "Sparrowswap OG May 2023",
     "youtube_url": null
   }'
   echo "Number of unique metadata jsons: $num_files"
   echo "Metadata JSON file: $metadata"
 
   # Iterate JSON file of ADDRESS_TO_MINT_NFTs_FOR
-  for (( i=${starting_address_and_token_id}; i< $total_rows; i+=${iterate_step_size} ))
+  for (( i=${starting_address}; i< $total_rows; i+=${iterate_step_size} ))
   do
 
     # Create an array with 100 addresses or less if it's the last batch
@@ -1018,7 +1007,7 @@ mint_nft_for_addresses_in_json_using_cw721_base_array_from_metadata_jsons() {
       ADDRESS_TO_MINT_NFTs_FOR=${ADDRESS_TO_MINT_NFTs_FOR%?}"]" # remove trailing comma
 
     TOKEN_ID_COUNTER="["
-      for (( k=i; k<=$((i+iterate_step_size-1)) && k<$total_rows; k++ ))
+      for (( k=token_id; k<=$((token_id+iterate_step_size-1)) && k<$total_rows; k++ ))
       do
         TOKEN_ID_COUNTER+="\"${k}\","
       done
@@ -1038,8 +1027,8 @@ mint_nft_for_addresses_in_json_using_cw721_base_array_from_metadata_jsons() {
                      "token_ids": $token_id
                    }
                  }')
-    GAS=$(( 40000 + 50000 * $iterate_step_size ))
-    FEES=$(( 4000 + 5000 * $iterate_step_size ))
+    GAS=$(( 40000 + 60000 * $iterate_step_size ))
+    FEES=$(( 4000 + 6000 * $iterate_step_size ))
 
     # Execute mint!
     sleep_time=10
@@ -1047,6 +1036,8 @@ mint_nft_for_addresses_in_json_using_cw721_base_array_from_metadata_jsons() {
     echo "Terminal command response: "
     yes | $SEID tx wasm execute $CW721_BASE_ADDRESS "$CW721_MINT" --chain-id $CHAIN_ID --from $ACCOUNT_ADDRESS --broadcast-mode=block --gas $GAS --fees=${FEES}usei --node=$RPC
     echo "End of output"
+
+    token_id=$((token_id + iterate_step_size))
 
   done # reads the next line of JSON
 }
@@ -1381,6 +1372,23 @@ query_seid_bank_account_for_csv_addresses() {
     echo "Counter: $counter"
 
   done
+}
+
+get_json_array_length() {
+  file_path=$(zenity_file_path)
+
+  # Check if jq is installed
+  if ! command -v jq &> /dev/null
+  then
+      echo "jq could not be found, please install jq first."
+      exit 1
+  fi
+
+  # Get the length of the JSON array
+  length=$(jq 'length' "$file_path")
+
+  # Output the length
+  echo "The length of the JSON array is: $length"
 }
 
 zenity_file_path() {

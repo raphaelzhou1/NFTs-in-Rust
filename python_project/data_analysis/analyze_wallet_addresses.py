@@ -96,9 +96,16 @@ def save_file(data, file_path):
 def load_file_with_path(file_path):
     if file_path.endswith('.csv'):
         df = pd.read_csv(file_path)
-        # Get the list of TX_FROM values
-        df = df[~df['TX_FROM'].str.contains('\r')]
-        data = df['TX_FROM'].tolist()
+
+        # Check if any of the column names starts with "sei"
+        col_name = next((col for col in df.columns if col.startswith('sei')), None)
+        if col_name is not None:
+            # If yes, just take the first column
+            data = df.iloc[:, 0].tolist()
+        else:
+            # Else, proceed as before
+            df = df[~df['TX_FROM'].str.contains('\r')]
+            data = df['TX_FROM'].tolist()
     elif file_path.endswith('.json'):
         with open(file_path, 'r') as json_file:
             data = json.load(json_file)
@@ -106,6 +113,7 @@ def load_file_with_path(file_path):
     else:
         raise ValueError(f"Unsupported file type: {file_path}")
     return data
+
 
 def compare_files(path1, path2):
     list1 = load_file_with_path(path1)
@@ -159,6 +167,7 @@ def main():
         # Load the paths for CSV and JSON files
         file_format = input("Enter the desired output file format (csv or json): ").lower()
         file1_path = load_file_path(file_format)
+        file_format = input("Enter the desired output file format (csv or json): ").lower()
         file2_path = load_file_path(file_format)
 
         # Compare files and output results

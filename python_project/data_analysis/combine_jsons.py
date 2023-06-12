@@ -1,14 +1,35 @@
 import tkinter as tk
 from tkinter import ttk, filedialog
 import json
+import csv
 import os
 from collections import OrderedDict
 
-def choose_json_file(starting_directory):
+def choose_file(starting_directory, title="Select a file"):
     root = tk.Tk()
     root.withdraw()
-    file_path = filedialog.askopenfilename(initialdir=starting_directory, title="Select a JSON file", filetypes=(("JSON files", "*.json"),))
+    file_path = filedialog.askopenfilename(initialdir=starting_directory,
+                                           title=title,
+                                           filetypes=(("JSON files", "*.json"), ("CSV files", "*.csv")))
     return file_path
+
+def load_file(file_path):
+    _, ext = os.path.splitext(file_path)
+    data = None
+
+    if ext == '.json':
+        with open(file_path, 'r') as f:
+            data = json.load(f)
+    elif ext == '.csv':
+        with open(file_path, 'r') as f:
+            reader = csv.reader(f)
+            headers = next(reader)
+            data = {header: [] for header in headers}
+            for row in reader:
+                for i, header in enumerate(headers):
+                    data[header].append(row[i])
+
+    return data
 
 def build_tree(tree, parent, data):
     if isinstance(data, dict):
@@ -64,34 +85,22 @@ def on_select(event):
     if first_addresses is not None:
         root.quit()
 
+# Select the first file
+print("Select the first file")
+first_file_path = choose_file(os.getcwd(), "Select the first file with new addresses")
+print(f"Selected file: {first_file_path}")
 
-# Select the first JSON file
-print("Select the first JSON file with new addresses")
-first_json_path = choose_json_file(os.getcwd())
-print(f"Selected file: {first_json_path}")
+# Load the data from the first file
+first_addresses = load_file(first_file_path)
 
-# Load the data from the first JSON file
-with open(first_json_path, 'r') as f:
-    first_json_data = json.load(f)
+# Select the second file
+print("Select the second file")
+second_file_path = choose_file(os.getcwd(), "Select the second file with old addresses")
+print(f"Selected file: {second_file_path}")
 
-# Create GUI and tree view
-root = tk.Tk()
-tree = ttk.Treeview(root)
-tree.pack(fill=tk.BOTH, expand=True)
+# Load the data from the second file
+second_addresses = load_file(second_file_path)
 
-build_tree(tree, '', first_json_data)
-tree.bind('<<TreeviewSelect>>', on_select)
-
-root.mainloop()
-
-# Select the second JSON file
-print("Select the second JSON file with old addresses")
-second_json_path = choose_json_file(os.getcwd())
-print(f"Selected file: {second_json_path}")
-
-# Load the addresses from the second JSON file
-with open(second_json_path, 'r') as f:
-    second_addresses = json.load(f)
 
 first_addresses_dict = OrderedDict.fromkeys(first_addresses)
 second_addresses_dict = OrderedDict.fromkeys(second_addresses)
@@ -105,9 +114,9 @@ combined_addresses_dict = OrderedDict(list(item for item in second_addresses_dic
 # first_addresses_set -= second_addresses_set
 
 # Write the result to a new file
-first_json_dir, first_json_name = os.path.split(first_json_path)
+first_json_dir, first_json_name = os.path.split(first_file_path)
 first_json_basename, first_json_ext = os.path.splitext(first_json_name) # Split the name and extension
-second_json_dir, second_json_name = os.path.split(second_json_path)
+second_json_dir, second_json_name = os.path.split(second_file_path)
 second_json_basename, second_json_ext = os.path.splitext(second_json_name)
 output_json_path = os.path.join(first_json_dir, f"{first_json_basename}_combined_with_{second_json_basename}{first_json_ext}")
 output_json_path_2 = os.path.join(first_json_dir, f"{first_json_basename}_removed_of_{second_json_basename}{first_json_ext}")
