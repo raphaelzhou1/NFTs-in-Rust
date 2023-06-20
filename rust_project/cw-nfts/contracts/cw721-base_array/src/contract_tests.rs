@@ -150,6 +150,116 @@ fn minting() {
 }
 
 #[test]
+fn batch_minting() {
+    let mut deps = mock_dependencies();
+    let contract = setup_contract(deps.as_mut());
+
+    let words = [
+        "petrify", "transform", "enhance", "entangle", "intrigue",
+        "illuminate", "navigate", "compose", "evoke", "conjure",
+        "ascend", "orchestrate", "wander", "discover", "integrate",
+        "synthesize", "cultivate", "harmonize", "investigate", "articulate",
+        "envelop", "resonate", "manifest", "radiate", "enchant",
+        "liberate", "visualize", "channel", "connect", "deviate",
+        "transcend", "warp", "explore", "elaborate", "generate",
+        "design", "converge", "revolve", "pioneer", "activate",
+        "inspire", "saturate", "vibrate", "express", "observe",
+        "contemplate", "innovate", "expand", "immerse", "simulate",
+        "engineer", "magnify", "embrace", "evolve", "influence",
+        "reconstruct", "redefine", "augment", "alternate", "imagine",
+        "create", "permeate", "emanate", "propagate", "resurrect",
+        "crystallize", "emanate", "dissipate", "reverberate", "shapeshift",
+        "intertwine", "cascade", "emanate", "unravel", "infuse",
+        "oscillate", "replicate", "illuminate", "splinter", "transmute",
+        "coalesce", "synchronize", "evaporate", "integrate", "synthesize",
+        "dematerialize", "fuse", "materialize", "defragment", "assimilate",
+        "project", "distill", "refract", "dissolve", "flux",
+        "oscillate", "differentiate", "echo", "sublimate", "intersect"
+    ];
+    let mut rng = rand::thread_rng();
+
+    // Create 100 random token_ids from the words array
+    let token_ids = (0..100)
+        .map(|_| words.choose(&mut rng).unwrap().to_string())
+        .collect::<Vec<String>>();
+
+    // Create 100 owners with variations of the name "medusa"
+    let owners = (0..100)
+        .map(|i| format!("medusa{}", i))
+        .collect::<Vec<String>>();
+
+    let mint_msg = ExecuteMsg::MintBatch {
+        token_ids: token_ids,
+        owners: owners,
+        token_uri: Some(token_uri.clone()),
+        extension: None,
+    };
+
+    // random cannot mint
+    let random = mock_info("random", &[]);
+    let err = contract
+        .execute(deps.as_mut(), mock_env(), random, mint_msg.clone())
+        .unwrap_err();
+    assert_eq!(err, ContractError::Ownership(OwnershipError::NotOwner));
+
+    // minter can mint
+    let allowed = mock_info(MINTER, &[]);
+    let _ = contract
+        .execute(deps.as_mut(), mock_env(), allowed, mint_msg)
+        .unwrap();
+
+    // ensure num tokens increases
+    let count = contract.num_tokens(deps.as_ref()).unwrap();
+    assert_eq!(1, count.count);
+
+    // unknown nft returns error
+    let _ = contract
+        .nft_info(deps.as_ref(), "unknown".to_string())
+        .unwrap_err();
+
+    // this nft info is correct
+    let info = contract.nft_info(deps.as_ref(), token_ids[1].clone()).unwrap();
+    assert_eq!(
+        info,
+        NftInfoResponse::<Extension> {
+            token_uri: Some(token_ids[1].clone()),
+            extension: None,
+        }
+    );
+
+    // owner info is correct
+    let owner = contract
+        .owner_of(deps.as_ref(), mock_env(), token_ids[5].clone(), true)
+        .unwrap();
+    assert_eq!(
+        owner,
+        OwnerOfResponse {
+            owner: owners[5].clone(),
+            approvals: vec![],
+        }
+    );
+
+    // Cannot mint same token_id again
+    let mint_msg2 = ExecuteMsg::Mint {
+        token_id: token_id.clone(),
+        owner: String::from("hercules"),
+        token_uri: None,
+        extension: None,
+    };
+
+    let allowed = mock_info(MINTER, &[]);
+    let err = contract
+        .execute(deps.as_mut(), mock_env(), allowed, mint_msg2)
+        .unwrap_err();
+    assert_eq!(err, ContractError::Claimed {});
+
+    // list the token_ids
+    let tokens = contract.all_tokens(deps.as_ref(), None, None).unwrap();
+    assert_eq!(1, tokens.tokens.len());
+    assert_eq!(vec![token_id], tokens.tokens);
+}
+
+#[test]
 fn test_update_minter() {
     let mut deps = mock_dependencies();
     let contract = setup_contract(deps.as_mut());

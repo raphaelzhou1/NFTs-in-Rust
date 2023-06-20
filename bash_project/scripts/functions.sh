@@ -923,7 +923,8 @@ mint_nft_for_addresses_in_json_using_cw721_base_array_from_metadata_jsons() {
   echo "Enter the CW721 contract address: "
   read CW721_BASE_ADDRESS
   export workspace_root="$(git rev-parse --show-toplevel)"
-  FUNCTION_NAME="mint_nft_from_csv"
+  FUNCTION_NAME="mint_nft_from_json"
+  SCRIPT_NAME="$(basename "$0" .sh)"
 
   echo "Choose JSON to load ADDRESS_TO_MINT_NFTs_FOR"
   ADDRESS_JSON_FILE=$(zenity --file-selection --title="Select a CSV file" --file-filter="*.json" --filename="${workspace_root}/" --separator=",")
@@ -934,6 +935,7 @@ mint_nft_for_addresses_in_json_using_cw721_base_array_from_metadata_jsons() {
   if [ ! -d "$CACHE_DIR" ]; then
       mkdir -p "$CACHE_DIR"
   fi
+  chmod u+w "$CACHE_DIR"
   ADDRESS_JSON_FILE_FILENAME=$(basename "$ADDRESS_JSON_FILE")
   ADDRESS_JSON_FILE_FILENAME_NO_EXTENSION="${ADDRESS_JSON_FILE_FILENAME%.*}"
   CACHE_FILE_FOR_JSON_ADDRESS_COPY="${CACHE_DIR}/${FUNCTION_NAME}_cache_for_${ADDRESS_JSON_FILE_FILENAME_NO_EXTENSION}_json_copy.txt"
@@ -944,26 +946,32 @@ mint_nft_for_addresses_in_json_using_cw721_base_array_from_metadata_jsons() {
   total_rows=$(echo "$JSON_DATA" | jq '. | length')
   echo "Total rows: $total_rows"
   addresses=($(echo $JSON_DATA | jq -r '.[]'))
-  CACHE_FILE_FOR_ADDRESS_CSV_COPY_ROW_COUNTER="${CACHE_DIR}/${FUNCTION_NAME}_cache_for_${ADDRESS_JSON_FILE_FILENAME_NO_EXTENSION}_csv_copy_row_counter.txt"
-  if [ ! -f "$CACHE_FILE_FOR_ADDRESS_CSV_COPY_ROW_COUNTER" ]; then
-      echo "1" >> "$CACHE_FILE_FOR_ADDRESS_CSV_COPY_ROW_COUNTER"
-  fi
+  CACHE_FILE_FOR_FAILED_TOKEN_IDs="${CACHE_DIR}/${FUNCTION_NAME}_cache_for_${ADDRESS_JSON_FILE_FILENAME_NO_EXTENSION}_failed_token_ids.json"
+    if [ ! -f "$CACHE_FILE_FOR_FAILED_TOKEN_IDs" ]; then
+      chmod u+w "$CACHE_FILE_FOR_FAILED_TOKEN_IDs"
+      echo "[]" > "$CACHE_FILE_FOR_FAILED_TOKEN_IDs"
+    fi
   ROW_COUNTER=$START_ROW
-  CACHE_FILE_FOR_TOKEN_ID="${CACHE_DIR}/${FUNCTION_NAME}_cache_for_token_id.txt"
-  if [ ! -f "$CACHE_FILE_FOR_TOKEN_ID" ]; then
-    echo "1" >> "$CACHE_FILE_FOR_TOKEN_ID"
-  fi
-  echo "Would you like to customize the starting row for address and token ID (if you enter yes, your input is the index of address and of token id from the files where minting starts from? Enter 'y' or 'yes' to customize: "
-      read answer
-      if [[ $answer = y ]] || [[ $answer = yes ]]; then
-          echo "Enter the index of address and of token id from the files where minting starts from: "
-          read starting_address
-          echo "Enter token ID to mint from: "
-          read token_id
-      else
-          starting_address=$(tail -n 1 "$CACHE_FILE_FOR_ADDRESS_CSV_COPY_ROW_COUNTER") # reads last row
-      fi
-  echo "Reading CACHE files at" $CACHE_DIR ", starting from row " $START_ROW " and from token_id" $START_TOKEN_ID
+  declare -A intervals
+  index=0
+    while true; do
+        echo "Enter the starting address index for interval $index: "
+        read starting_address
+
+        echo "Enter the ending address index for interval $index: "
+        read ending_address
+
+        intervals["$index,0"]=$starting_address
+        intervals["$index,1"]=$ending_address
+
+        index=$((index+1))
+
+        echo "Do you want to enter another interval of starting_address and ending_address? Enter 'y' or 'yes' to continue: "
+        read answer
+        if [[ $answer != "y" ]] && [[ $answer != "yes" ]]; then
+            break
+        fi
+    done
 
   echo "Would you like to customize step size of minting? Enter 'y' or 'yes' to customize: "
         read answer
@@ -975,71 +983,142 @@ mint_nft_for_addresses_in_json_using_cw721_base_array_from_metadata_jsons() {
             echo "Default step size: 1000"
         fi
 
-#  echo "Choose folder for metadata JSON: "
-#  folder_path=$(zenity --file-selection --directory --title="Choose a directory")
-#  json_files=($(ls "$folder_path"/*.json))
-#  num_files=${#json_files[@]}
-#  random_index=$((RANDOM % num_files))
-#  random_file=${json_files[$random_index]}
-#  metadata=$(jq '.' "$random_file")
+#  metadata='{
+#      "animation_url": null,
+#      "attributes": [],
+#      "description": "Sparrowswap OG April 2023",
+#      "external_url": "https://sparrowswap.xyz/gallery",
+#      "image": "https://gateway.pinata.cloud/ipfs/QmbK5EXuM2RASeiVzwZ9aZHuJ4ugMnsLWBAqWy3kEyGmqD5",
+#      "name": "Sparrowswap OG April 2023",
+#      "youtube_url": null
+#    }'
   metadata='{
     "animation_url": null,
     "attributes": [],
-    "description": "Sparrowswap OG May 2023",
+    "description": "This musket, carried through storms and battles, is the mark of a true corsair",
     "external_url": "https://sparrowswap.xyz/gallery",
-    "image": "https://gateway.pinata.cloud/ipfs/QmeT2QYjqUJYVBX5EuNA9u1rdDE1kXu2x2ADKeFgnVdxg5",
+    "image": "https://gateway.pinata.cloud/ipfs/QmWiaqMjBV2SfPRqJWM7Pfm4mBkyfqcrUa8LJBd47n4Phq",
     "name": "Sparrowswap OG May 2023",
     "youtube_url": null
   }'
-  echo "Number of unique metadata jsons: $num_files"
+  token_uri='https://bafybeicazjnvpktjwx3vrh6cbl7liqdd7qs2lv23wwloudkrrzkycxp5du.ipfs.dweb.link'
+#  echo "Number of unique metadata jsons: $num_files"
   echo "Metadata JSON file: $metadata"
 
   # Iterate JSON file of ADDRESS_TO_MINT_NFTs_FOR
-  for (( i=${starting_address}; i< $total_rows; i+=${iterate_step_size} ))
-  do
+  for ((intervalIndex=0; intervalIndex<${#intervals[@]}/2; intervalIndex++)); do
+        starting_address=${intervals["$intervalIndex,0"]}
+        ending_address=${intervals["$intervalIndex,1"]}
 
-    # Create an array with 100 addresses or less if it's the last batch
-    ADDRESS_TO_MINT_NFTs_FOR="["
-      for (( j=i; j<=$((i+iterate_step_size-1)) && j<$total_rows; j++ ))
+      for (( i=${starting_address}; i< $ending_address; i+=${iterate_step_size} ))
       do
-        ADDRESS_TO_MINT_NFTs_FOR+="\"${addresses[$j]}\","
+
+        start_count=$($SEID q wasm contract-state smart $CW721_BASE_ADDRESS '{ "num_tokens": {} }' --output json --chain-id $CHAIN_ID --node=$RPC | jq -r .data.count)
+        echo "Before this mint, this CW721 has $start_count NFTs minted"
+
+        # Create an array with 100 addresses or less if it's the last batch
+        ADDRESS_TO_MINT_NFTs_FOR="["
+          for (( j=i; j<=$((i+iterate_step_size-1)) && j<$total_rows; j++ ))
+          do
+            ADDRESS_TO_MINT_NFTs_FOR+="\"${addresses[$j]}\","
+          done
+          ADDRESS_TO_MINT_NFTs_FOR=${ADDRESS_TO_MINT_NFTs_FOR%?}"]" # remove trailing comma
+
+        echo "k: $i"
+        echo "k+iterate_step_size-1: $((i+iterate_step_size-1))"
+        echo "total_rows: $((total_rows))"
+        TOKEN_ID_COUNTER="["
+          for (( k=${i}; k<=$((i+iterate_step_size-1)) && i<$total_rows; k++ ))
+          do
+            TOKEN_ID_COUNTER+="\"${k}\","
+          done
+        TOKEN_ID_COUNTER=${TOKEN_ID_COUNTER%?}"]" # remove trailing comma
+
+        echo "ADDRESS_TO_MINT_NFTs_FOR: $ADDRESS_TO_MINT_NFTs_FOR"
+        echo "TOKEN_ID_COUNTER: $TOKEN_ID_COUNTER"
+
+        # or add:   --argjson metadata "$metadata" \
+        #           "extension": $metadata,
+        CW721_MINT=$(jq -n \
+                    --argjson metadata "$metadata" \
+                    --argjson owner "$ADDRESS_TO_MINT_NFTs_FOR" \
+                    --argjson token_ids "$TOKEN_ID_COUNTER" \
+                    '{
+                       "mint_batch": {
+                         "extension": $metadata,
+                         "token_uri": "https://bafybeicazjnvpktjwx3vrh6cbl7liqdd7qs2lv23wwloudkrrzkycxp5du.ipfs.dweb.link",
+                         "owners": $owner,
+                         "token_ids": $token_ids
+                       }
+                     }')
+        GAS=$(( 150000 + 35000 * $iterate_step_size ))
+        FEES=$(( 15000 + 3500 * $iterate_step_size ))
+
+        # Execute mint!
+        echo "Terminal command: ${SEID} tx wasm execute ${CW721_BASE_ADDRESS} '${CW721_MINT}' --chain-id ${CHAIN_ID} --from ${ACCOUNT_ADDRESS} --broadcast-mode=block --gas ${GAS} --fees=${FEES}usei --node=${RPC}"
+        echo "Terminal command response: "
+        output=$(yes | $SEID tx wasm execute $CW721_BASE_ADDRESS "$CW721_MINT" --chain-id $CHAIN_ID --from $ACCOUNT_ADDRESS --broadcast-mode=block --gas $GAS --fees=${FEES}usei --node=$RPC)
+        echo $output
+        echo "End of output"
+
+        end_count=$($SEID q wasm contract-state smart $CW721_BASE_ADDRESS '{ "num_tokens": {} }' --output json --chain-id $CHAIN_ID --node=$RPC | jq -r .data.count)
+        echo "After this mint, this CW721 has $end_count NFTs minted"
+
+        address_for_verification=${addresses[$(($i+10))]}
+        owner_query=$(jq -n \
+                            --arg address_for_verification "$address_for_verification" \
+                            '{
+                               "tokens": {
+                                 "owner": $address_for_verification
+                               }
+                             }')
+        token_id_for_verification=$($SEID q wasm contract-state smart $CW721_BASE_ADDRESS $owner_query --output json --chain-id $CHAIN_ID --node=$RPC | jq -r .data.tokens)
+        if [[ -z $token_id_for_verification ]]; then
+            echo "address_for_verification $address_for_verification not found"
+        else
+            echo "address_for_verification $address_for_verification found"
+        fi
+
+        if ((end_count - start_count != iterate_step_size)); then
+          echo "ERROR: MINTING FAILED"
+
+          current_content=$(cat "$CACHE_FILE_FOR_FAILED_TOKEN_IDs")
+          updated_content=$(echo "$current_content" | jq --argjson items "$TOKEN_ID_COUNTER" '. += $items')
+          echo "$updated_content" > "$CACHE_FILE_FOR_FAILED_TOKEN_IDs"
+        else
+            echo "MINTING SUCCESSFUL"
+        fi
+
+        sleep 6
+
+        token_id=$((token_id + iterate_step_size))
       done
-      ADDRESS_TO_MINT_NFTs_FOR=${ADDRESS_TO_MINT_NFTs_FOR%?}"]" # remove trailing comma
-
-    TOKEN_ID_COUNTER="["
-      for (( k=token_id; k<=$((token_id+iterate_step_size-1)) && k<$total_rows; k++ ))
-      do
-        TOKEN_ID_COUNTER+="\"${k}\","
-      done
-      TOKEN_ID_COUNTER=${TOKEN_ID_COUNTER%?}"]" # remove trailing comma
-
-    echo "ADDRESS_TO_MINT_NFTs_FOR: $ADDRESS_TO_MINT_NFTs_FOR"
-    echo "TOKEN_ID_COUNTER: $TOKEN_ID_COUNTER"
-
-    CW721_MINT=$(jq -n \
-                --argjson metadata "$metadata" \
-                --argjson owner "$ADDRESS_TO_MINT_NFTs_FOR" \
-                --argjson token_id "$TOKEN_ID_COUNTER" \
-                '{
-                   "mint_batch": {
-                     "extension": $metadata,
-                     "owners": $owner,
-                     "token_ids": $token_id
-                   }
-                 }')
-    GAS=$(( 40000 + 60000 * $iterate_step_size ))
-    FEES=$(( 4000 + 6000 * $iterate_step_size ))
-
-    # Execute mint!
-    sleep_time=10
-    echo "Terminal command: ${SEID} tx wasm execute ${CW721_BASE_ADDRESS} '${CW721_MINT}' --chain-id ${CHAIN_ID} --from ${ACCOUNT_ADDRESS} --broadcast-mode=block --gas ${GAS} --fees=${FEES}usei --node=${RPC}"
-    echo "Terminal command response: "
-    yes | $SEID tx wasm execute $CW721_BASE_ADDRESS "$CW721_MINT" --chain-id $CHAIN_ID --from $ACCOUNT_ADDRESS --broadcast-mode=block --gas $GAS --fees=${FEES}usei --node=$RPC
-    echo "End of output"
-
-    token_id=$((token_id + iterate_step_size))
 
   done # reads the next line of JSON
+}
+
+burn_nft() {
+  echo "Enter CW721 Address to burn: "
+  read CW721_ADDRESS
+  echo "Put in starting token ID"
+  read START_TOKEN_ID
+
+  for (( i=${START_TOKEN_ID}; i<=$((START_TOKEN_ID+1000)); i++ )) {
+    CW721_BURN=$(jq -n \
+                    --argjson token_id "$i" \
+                    '{
+                       "burn": {
+                         "token_id": $token_id
+                       }
+                     }')
+
+    GAS="200000"
+    FEES="20000"
+
+    echo "Terminal command: ${SEID} tx wasm execute ${CW721_ADDRESS} "${CW721_BURN}" --chain-id ${CHAIN_ID} --from ${ACCOUNT_ADDRESS} --broadcast-mode=block --gas $GAS --fees=${FEES}usei --node=${RPC}"
+    yes | $SEID tx wasm execute $CW721_ADDRESS "$CW721_BURN" --chain-id $CHAIN_ID --from $ACCOUNT_ADDRESS --broadcast-mode=block --gas $GAS --fees=${FEES}usei --node=$RPC
+    echo "End of output"
+  }
 }
 
 query_cw20_users() {
@@ -1104,7 +1183,7 @@ query_nft_info_from_csv() {
   echo "Enter CW721 contract address: "
   read CW721_BASE_ADDRESS
   export workspace_root="$(git rev-parse --show-toplevel)"
-  FUNCTION_NAME="mint_nft_from_csv"
+  FUNCTION_NAME="query_nft_from_csv"
   echo "Choose CSV to load ADDRESS_TO_MINT_NFTs_FOR"
   ADDRESS_CSV_FILE=$(zenity --file-selection --title="Select a CSV file" --file-filter="*.csv" --filename="${workspace_root}/" --separator=",")
   total_rows=$(wc -l < "$ADDRESS_CSV_FILE")
@@ -1197,7 +1276,7 @@ query_nft_info_from_json() {
   echo "Enter CW721 contract address: "
   read CW721_BASE_ADDRESS
   export workspace_root="$(git rev-parse --show-toplevel)"
-  FUNCTION_NAME="mint_nft_from_csv"
+  FUNCTION_NAME="query_nft_from_json"
   echo "Choose JSON to load ADDRESS_TO_MINT_NFTs_FOR"
   ADDRESS_JSON_FILE=$(zenity --file-selection --title="Select a JSON file" --file-filter="*.json" --filename="${workspace_root}/" --separator=",")
   total_rows=$(wc -l < "$ADDRESS_JSON_FILE")
@@ -1269,35 +1348,6 @@ query_nft_info_from_json() {
   done
 }
 
-query_for_user_tokens() {
-  local address=$1
-  local token_id_max=$2
-  local cw721_base_address=$3
-  local seid=$4
-  local chain_id=$5
-  local rpc=$6
-  local cw721_query_with_address='{
-      "tokens": {
-        "owner": "'$address'"
-      }
-    }'
-  local token_ids_in_json=$($seid q wasm contract-state smart $cw721_base_address "$cw721_query_with_address" --output json --chain-id $chain_id --node=$rpc | jq -r '.data.tokens')
-
-  local array_length=$(echo "$token_ids_in_json" | jq '. | length')
-  local number_found=0
-  for j in $(seq 0 $(($array_length - 1))); do
-    local element=$(echo "$token_ids_in_json" | jq ".[$j]" | tr -d '"')
-    if [[ $element =~ ^[0-9]+$ ]]; then
-      if [ "$element" -ge 1 ] && [ "$element" -le "$token_id_max" ]; then
-        number_found=$(($number_found + 1))
-        echo "Found token_id: $element for address $address"
-        break
-      fi
-    fi
-  done
-  return $number_found
-}
-
 query_for_cw20_current_accounts() {
   echo "Enter CW20 contract address to query user balances on: "
     read cw20_address
@@ -1340,7 +1390,7 @@ query_for_cw20_current_accounts() {
   done
 }
 
-query_seid_bank_account_for_csv_addresses() {
+query_seid_bank_account_from_csv_addresses() {
   file_path=$(zenity_file_path)
   counter=0
 
@@ -1372,6 +1422,223 @@ query_seid_bank_account_for_csv_addresses() {
     echo "Counter: $counter"
 
   done
+}
+
+query_seid_bank_account_from_json_addresses() {
+  file_path=$(zenity_file_path)
+  counter=0
+
+  # Convert JSON array to bash array
+  addresses=$(cat $file_path)
+  total_rows=$(echo $addresses | jq -r '. | length')
+
+  # Loop over each address in the array
+  for (( i=0; i< $total_rows; i++ ))
+  do
+    # Extract each address
+    address=$(echo $addresses | jq -r ".[$i]")
+
+    # Check if the address is not empty or null before running the command
+    if [[ -n "$address" && "$address" != "null" ]]; then
+      echo "Querying address: $address"
+      echo "Command: $SEID q bank balances $address --output=json --node=https://rpc-sei-testnet.rhinostake.com/"
+      output=$($SEID q bank balances $address --output=json --node=https://rpc-sei-testnet.rhinostake.com/)
+
+      # Parse the balances field from the output
+      balances=$(echo "$output" | jq -r '.balances')
+
+      # If balances is empty, increment the counter
+      if [[ -z "$balances" || "$balances" == "[]" ]]; then
+        ((counter++))
+      fi
+      echo "Counter: $counter"
+    else
+      echo "Skipping empty or null address"
+    fi
+  done
+}
+
+query_on_cw721_addresses_from_json() {
+  FUNCTION_NAME="query_on_cw721_addresses_from_json"
+  SCRIPT_NAME="$(basename "$0" .sh)"
+
+  echo "Enter JSON file path for list of cw721 addresses: "
+  file_path=$(zenity_file_path)
+  counter=0
+
+  # Convert JSON array to bash array
+  addresses=$(cat $file_path)
+  total_rows=$(echo $addresses | jq -r '. | length')
+  echo "Total rows: $total_rows"
+
+  echo "Do you want to proceed sequentially or randomly? (Enter 's' for sequential, 'r' for random, 'c' for customized): "
+    read user_choice
+
+  echo "enter CW721 contract address to query token_ids on: "
+    read cw721_address
+
+  echo "enter collection name: (for caching purpose)"
+    read collection_name
+  CACHE_DIR="${workspace_root}/bash_project/scripts/cache/${collection_name}/${SCRIPT_NAME}_cache"
+    if [ ! -d "$CACHE_DIR" ]; then
+        mkdir -p "$CACHE_DIR"
+    fi
+  chmod u+w "$CACHE_DIR"
+  CACHE_FILE_FOR_ADDRESSES_WITHOUT_TOKENS="${CACHE_DIR}/${FUNCTION_NAME}_cache_for_${cw721_address}_addresses_without_tokens.json"
+    if [ ! -f "$CACHE_FILE_FOR_ADDRESSES_WITHOUT_TOKENS" ]; then
+        echo "[]" > "$CACHE_FILE_FOR_ADDRESSES_WITHOUT_TOKENS"
+    fi
+  echo "Cache file for addresses without tokens: $CACHE_FILE_FOR_ADDRESSES_WITHOUT_TOKENS"
+
+  # Loop over each address in the array
+
+  if [[ $user_choice == "s" ]]; then
+    for (( i=0; i< $total_rows; i++ ))
+    do
+      # Extract each address
+      address=$(echo $addresses | jq -r ".[$i]")
+
+      # Check if the address is not empty or null before running the command
+      if [[ -n "$address" && "$address" != "null" ]]; then
+        echo "Querying address: $address"
+        local cw721_query_with_address='{
+              "tokens": {
+                "owner": "'$address'"
+              }
+            }'
+          output=$($SEID q wasm contract-state smart $cw721_address "$cw721_query_with_address" --output json --chain-id $CHAIN_ID --node=$RPC | jq -r '.data.tokens')
+          echo "token IDs for $address: $output"
+
+          if [ ${#output[@]} -ne 0 ]; then
+            echo "$address is not empty"
+          else
+            echo "$address is empty"
+            current_content=$(cat "$CACHE_FILE_FOR_ADDRESSES_WITHOUT_TOKENS")
+            updated_content=$(echo "$current_content" | jq --argjson items "$address" '. += $items')
+            echo "$updated_content" > "$CACHE_FILE_FOR_ADDRESSES_WITHOUT_TOKENS"
+          fi
+
+      else
+        echo "Skipping empty or null address"
+      fi
+    done
+  elif [[ $user_choice == "s" ]]; then
+    total_counter=0
+    empty_counter=0
+
+    for (( i=0; i > -1; i++ ))
+    do
+      # Extract each address, randomly selected
+      # Knowing that RANDOM is between 0 and 32767
+      random_multiplier=$(( RANDOM % ($total_rows / 32767 )))
+      i=$(( RANDOM % $total_rows * $random_multiplier ))
+
+      address=$(echo $addresses | jq -r ".[$i]")
+
+      # Check if the address is not empty or null before running the command
+      if [[ -n "$address" && "$address" != "null" ]]; then
+        echo "Querying address: $address at index $i"
+        local cw721_query_with_address='{
+              "tokens": {
+                "owner": "'$address'"
+              }
+            }'
+          output=$($SEID q wasm contract-state smart $cw721_address "$cw721_query_with_address" --output json --chain-id $CHAIN_ID --node=$RPC | jq -r '.data.tokens')
+          echo "token IDs for $address: $output"
+
+          if [ ${#output[@]} -ne 0 ]; then
+            echo "$address is not empty"
+          else
+            echo "$address is empty"
+            current_content=$(cat "$CACHE_FILE_FOR_ADDRESSES_WITHOUT_TOKENS")
+            updated_content=$(echo "$current_content" | jq --argjson items "$i" '. += $items')
+            echo "$updated_content" > "$CACHE_FILE_FOR_ADDRESSES_WITHOUT_TOKENS"
+            empty_counter=$((empty_counter+1))
+            echo "In total, # of addresses without tokens: $empty_counter"
+          fi
+
+        total_counter=$((total_counter+1))
+        echo "In total, # of addresses queried: $total_counter"
+
+      else
+        echo "Skipping empty or null address"
+      fi
+    done
+  elif [[ $user_choice == "c" ]]; then
+    echo "Enter starting index: "
+    read starting_index
+    echo "Enter step size: "
+    read step_size
+    echo "Enter ending index: "
+    read ending_index
+
+    total_counter=0
+    empty_counter=0
+
+    for (( i=$starting_index ; i < $ending_index ; i+=$step_size ))
+    do
+
+      address=$(echo $addresses | jq -r ".[$i]")
+
+      # Check if the address is not empty or null before running the command
+      if [[ -n "$address" && "$address" != "null" ]]; then
+        echo "Querying address: $address at index $i"
+        local cw721_query_with_address='{
+              "tokens": {
+                "owner": "'$address'"
+              }
+            }'
+          output=$($SEID q wasm contract-state smart $cw721_address "$cw721_query_with_address" --output json --chain-id $CHAIN_ID --node=$RPC | jq -r '.data.tokens')
+          echo "token IDs for $address: $output"
+
+          if [ ${#output[@]} -ne 0 ]; then
+            echo "$address is not empty"
+          else
+            echo "$address is empty"
+            current_content=$(cat "$CACHE_FILE_FOR_ADDRESSES_WITHOUT_TOKENS")
+            updated_content=$(echo "$current_content" | jq --argjson items "$address" '. += $items')
+            echo "$updated_content" > "$CACHE_FILE_FOR_ADDRESSES_WITHOUT_TOKENS"
+            empty_counter=$((empty_counter+1))
+            echo "In total, # of addresses without tokens: $empty_counter"
+          fi
+
+        total_counter=$((total_counter+1))
+        echo "In total, # of addresses queried: $total_counter"
+
+      else
+        echo "Skipping empty or null address"
+      fi
+    done
+  fi
+}
+
+query_on_cw721_addresses_from_json_then_query_their_token_ids() {
+  local address=$1
+  local token_id_max=$2
+  local cw721_base_address=$3
+  local seid=$4
+  local chain_id=$5
+  local rpc=$6
+  local cw721_query_with_address='{
+      "tokens": {
+        "owner": "'$address'"
+      }
+    }'
+  local token_ids_in_json=$($seid q wasm contract-state smart $cw721_base_address "$cw721_query_with_address" --output json --chain-id $chain_id --node=$rpc | jq -r '.data.tokens')
+
+  local array_length=$(echo "$token_ids_in_json" | jq '. | length')
+  local number_found=0
+  for j in $(seq 0 $(($array_length - 1))); do
+    local element=$(echo "$token_ids_in_json" | jq ".[$j]" | tr -d '"')
+    if [[ $element =~ ^[0-9]+$ ]]; then
+      if [ "$element" -ge 1 ] && [ "$element" -le "$token_id_max" ]; then
+        number_found=$(($number_found + 1))
+        echo "Found token_id: $element for address $address"
+        break
+      fi
+    fi
+  done
+  return $number_found
 }
 
 get_json_array_length() {

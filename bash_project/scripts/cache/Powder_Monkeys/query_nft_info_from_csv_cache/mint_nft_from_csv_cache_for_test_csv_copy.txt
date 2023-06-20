@@ -1,2 +1,0 @@
-Timestamp,Username,Your Twitter,Your Sei wallet address,Your Discord Username (optional)
-2023/04/04 1:07:35 PM AST,,https://twitter.com/echthrass/status/1643298996939792384?s=20,sei1k4eahdp6wnsei1k4eahdp6wnnrxepcazafer5g0uluy98d4jq3grnrxepcazafer5g0uluy98d4jq3gr,Dwi#0750

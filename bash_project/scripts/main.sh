@@ -2,7 +2,7 @@
 
 export SEID="$HOME/go/bin/seid"
 #export RPC="https://sei.kingnodes.com/"
-export RPC="https://rpc.atlantic-2.seinetwork.io"
+export RPC="https://rpc-sei-testnet.rhinostake.com"
 export CHAIN_ID=atlantic-2
 export CONFIG_PATH=/Users/tianyu/.sei/config/config.toml
 export ACCOUNT_NAME="tianyu"
